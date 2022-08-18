@@ -61,9 +61,16 @@ function getBundlerDependency (bundler: WizardBundler['type'], projectPath: stri
   }
 }
 
-export const WIZARD_MOUNT_MODULES = ['cypress/react', 'cypress/react18', 'cypress/vue', 'cypress/vue2', 'cypress/angular'] as const
+export const WIZARD_MOUNT_MODULES = [
+  'cypress/react',
+  'cypress/react18',
+  'cypress/vue',
+  'cypress/vue2',
+  'cypress/angular',
+  'cypress/svelte',
+] as const
 
-export type WizardMountModule = 'cypress/react' | 'cypress/react18' | 'cypress/vue' | 'cypress/vue2' | 'cypress/angular'
+export type WizardMountModule = 'cypress/react' | 'cypress/react18' | 'cypress/vue' | 'cypress/vue2' | 'cypress/angular' | 'cypress/svelte'
 
 const mountModule = (mountModule: WizardMountModule) => (projectPath: string) => Promise.resolve(mountModule)
 
@@ -265,5 +272,23 @@ export const WIZARD_FRAMEWORKS = [
     supportStatus: 'full',
     componentIndexHtml: componentIndexHtmlGenerator(),
     specPattern: '**/*.cy.ts',
+  },
+  {
+    type: 'svelte',
+    configFramework: 'svelte',
+    category: 'library',
+    name: 'Svelte.js',
+    detectors: [dependencies.WIZARD_DEPENDENCY_SVELTE],
+    supportedBundlers: [dependencies.WIZARD_DEPENDENCY_WEBPACK, dependencies.WIZARD_DEPENDENCY_VITE],
+    dependencies: (bundler: WizardBundler['type'], projectPath: string): Promise<DependencyToInstall[]> => {
+      return Promise.all([
+        getBundlerDependency(bundler, projectPath),
+        isDependencyInstalled(dependencies.WIZARD_DEPENDENCY_SVELTE, projectPath),
+      ])
+    },
+    codeGenFramework: 'svelte',
+    mountModule: mountModule('cypress/svelte'),
+    supportStatus: 'alpha',
+    componentIndexHtml: componentIndexHtmlGenerator(),
   },
 ] as const
