@@ -811,7 +811,7 @@ describe('http/response-middleware', function () {
       expect(appendStub).not.to.be.called
     })
 
-    it('uses X-Set-Cookie when experimental flag is on and request needs cross-origin handling', async () => {
+    it('uses X-Set-Cookie when experimental flag is on and request cookies needs third-party handling', async () => {
       const appendStub = sinon.stub()
       const ctx = prepareContext({
         req: {
@@ -833,7 +833,45 @@ describe('http/response-middleware', function () {
       expect(appendStub).to.be.calledWith('X-Set-Cookie', 'cookie=value')
     })
 
-    it('uses Set-Cookie when experimental flag is on but request does not need cross-origin handling', async () => {
+    it('uses Set-Cookie when experimental flag is on and request is cross-origin, but cookies are handled in a first-party context (different port)', async () => {
+      // This is NOT a same origin request, but the context is the application being on the primary origin with a cross-origin request that applies first-party cookies
+      const { appendStub, ctx } = prepareSameOriginContext({
+        req: {
+          proxiedUrl: 'http://www.foobar.com:8080',
+        },
+        incomingRes: {
+          headers: {
+            'set-cookie': 'cookie=value',
+          },
+        },
+      })
+
+      await testMiddleware([CopyCookiesFromIncomingRes], ctx)
+
+      expect(appendStub).to.be.calledOnce
+      expect(appendStub).to.be.calledWith('Set-Cookie', 'cookie=value')
+    })
+
+    it('uses Set-Cookie when experimental flag is on and request is cross-origin, but cookies are handled in a first-party context (different subdomain)', async () => {
+      // This is NOT a same origin request, but the context is the application being on the primary origin with a cross-origin request that applies first-party cookies
+      const { appendStub, ctx } = prepareSameOriginContext({
+        req: {
+          proxiedUrl: 'http://app.foobar.com',
+        },
+        incomingRes: {
+          headers: {
+            'set-cookie': 'cookie=value',
+          },
+        },
+      })
+
+      await testMiddleware([CopyCookiesFromIncomingRes], ctx)
+
+      expect(appendStub).to.be.calledOnce
+      expect(appendStub).to.be.calledWith('Set-Cookie', 'cookie=value')
+    })
+
+    it('uses Set-Cookie when experimental flag is on but request cookies do not need third-party handling', async () => {
       const { appendStub, ctx } = prepareSameOriginContext()
 
       await testMiddleware([CopyCookiesFromIncomingRes], ctx)
@@ -842,7 +880,7 @@ describe('http/response-middleware', function () {
       expect(appendStub).to.be.calledWith('Set-Cookie', 'cookie=value')
     })
 
-    it('does not send cross:origin:automation:cookies if request does not need cross-origin handling', async () => {
+    it('does not send cross:origin:automation:cookies if request cookies do not need third-party handling', async () => {
       const { ctx } = prepareSameOriginContext()
 
       await testMiddleware([CopyCookiesFromIncomingRes], ctx)
