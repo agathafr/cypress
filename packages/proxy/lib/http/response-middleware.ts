@@ -12,7 +12,7 @@ import { PassThrough, Readable } from 'stream'
 import * as rewriter from './util/rewriter'
 import zlib from 'zlib'
 import { URL } from 'url'
-import { CookiesHelper } from './util/cookies'
+import { CookiesHelper, doesUrlSchemeDomainAndTLDMatch } from './util/cookies'
 
 interface ResponseMiddlewareProps {
   /**
@@ -397,17 +397,16 @@ const MaybePreventCaching: ResponseMiddleware = function () {
   this.next()
 }
 
-const checkIfNeedsCrossOriginHandling = (ctx: HttpMiddlewareThis<ResponseMiddlewareProps>) => {
+const checkIfCookieNeedsThirdPartyHandling = (ctx: HttpMiddlewareThis<ResponseMiddlewareProps>) => {
   const currentAUTUrl = ctx.getAUTUrl()
 
-  // A cookie needs cross origin handling if the request itself is
-  // cross-origin or the origins between requests don't match,
+  // A cookie needs third party handling if the request URL Scheme, Domain, or TLD between requests doesn't match the AUT,
   // since the browser won't set them in that case and if it's
   // secondary-origin -> primary-origin, we don't recognize the request as cross-origin
   return (
     ctx.config.experimentalSessionAndOrigin
     && (
-      (currentAUTUrl && !cors.urlOriginsMatch(currentAUTUrl, ctx.req.proxiedUrl))
+      (currentAUTUrl && !doesUrlSchemeDomainAndTLDMatch(currentAUTUrl, ctx.req.proxiedUrl))
       || !ctx.remoteStates.isPrimaryOrigin(ctx.req.proxiedUrl)
     )
   )
@@ -420,7 +419,7 @@ const CopyCookiesFromIncomingRes: ResponseMiddleware = async function () {
     return this.next()
   }
 
-  // Cross-origin Cookie Handling
+  // First/Third Party Cookie Handling
   // ---------------------------
   // - We capture cookies sent by responses and add them to our own server-side
   //   tough-cookie cookie jar. All request cookies are captured, since any
@@ -431,17 +430,17 @@ const CopyCookiesFromIncomingRes: ResponseMiddleware = async function () {
   //   clear that it's one we're handling ourselves.
   // - We also set the cookies through automation so they are available in the
   //   browser via document.cookie and via Cypress cookie APIs
-  //   (e.g. cy.getCookie). This is only done for cross-origin responses, since
-  //   non-cross-origin responses will be successfully set in the browser
+  //   (e.g. cy.getCookie). This is only done for third-party cookie context responses, since
+  //   first party cookie responses will be successfully set in the browser
   //   automatically.
   // - In the request middleware, we retrieve the cookies for a given URL
   //   and attach them to the request, like the browser normally would.
   //   tough-cookie handles retrieving the correct cookies based on domain,
   //   path, etc. It also removes cookies from the cookie jar if they've expired.
-  const needsCrossOriginHandling = checkIfNeedsCrossOriginHandling(this)
+  const needsThirdPartyHandling = checkIfCookieNeedsThirdPartyHandling(this)
 
   const appendCookie = (cookie: string) => {
-    const headerName = needsCrossOriginHandling ? 'X-Set-Cookie' : 'Set-Cookie'
+    const headerName = needsThirdPartyHandling ? 'X-Set-Cookie' : 'Set-Cookie'
 
     try {
       this.res.append(headerName, cookie)
@@ -465,7 +464,7 @@ const CopyCookiesFromIncomingRes: ResponseMiddleware = async function () {
     request: {
       url: this.req.proxiedUrl,
       isAUTFrame: this.req.isAUTFrame,
-      needsCrossOriginHandling,
+      needsThirdPartyHandling,
     },
   })
 
@@ -479,7 +478,7 @@ const CopyCookiesFromIncomingRes: ResponseMiddleware = async function () {
 
   const addedCookies = await cookiesHelper.getAddedCookies()
 
-  if (!needsCrossOriginHandling || !addedCookies.length) {
+  if (!needsThirdPartyHandling || !addedCookies.length) {
     return this.next()
   }
 

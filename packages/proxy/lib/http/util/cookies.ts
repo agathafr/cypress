@@ -7,7 +7,7 @@ import { AutomationCookie, Cookie, CookieJar, toughCookieToAutomationCookie } fr
 interface RequestDetails {
   url: string
   isAUTFrame: boolean
-  needsCrossOriginHandling: boolean
+  needsThirdPartyHandling: boolean
 }
 
 /**
@@ -18,7 +18,7 @@ interface RequestDetails {
  * @param {string} url2 - the second url
  * @returns {boolean} whether or not the URL Scheme and Domain
  */
-const doesUrlSchemeDomainAndTLDMatch = (url1: string, url2: string) => {
+export const doesUrlSchemeDomainAndTLDMatch = (url1: string, url2: string) => {
   if (!url1 || !url2) return false
 
   const { port: port1, ...parsedUrl1 } = cors.parseUrlIntoDomainTldPort(url1)
@@ -102,7 +102,7 @@ export class CookiesHelper {
     // this plays a part in adding cross-origin cookies to the browser via
     // automation. if the request doesn't need cross-origin handling, this
     // is a noop
-    if (!this.request.needsCrossOriginHandling) return
+    if (!this.request.needsThirdPartyHandling) return
 
     this.previousCookies = this.cookieJar.getAllCookies()
   }
@@ -111,7 +111,7 @@ export class CookiesHelper {
     // this plays a part in adding cross-origin cookies to the browser via
     // automation. if the request doesn't need cross-origin handling, this
     // is a noop
-    if (!this.request.needsCrossOriginHandling) return []
+    if (!this.request.needsThirdPartyHandling) return []
 
     const afterCookies = this.cookieJar.getAllCookies()
 
