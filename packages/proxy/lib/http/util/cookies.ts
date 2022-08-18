@@ -10,6 +10,26 @@ interface RequestDetails {
   needsCrossOriginHandling: boolean
 }
 
+/**
+ * Whether or not a url's scheme, domain, and top-level domain match to determine whether or not
+ * a cookie is considered first-party. See https://developer.mozilla.org/en-US/docs/Web/HTTP/Cookies#third-party_cookies
+ * for more details.
+ * @param {string} url1 - the first url
+ * @param {string} url2 - the second url
+ * @returns {boolean} whether or not the URL Scheme and Domain
+ */
+const doesUrlSchemeDomainAndTLDMatch = (url1: string, url2: string) => {
+  if (!url1 || !url2) return false
+
+  const { port: port1, ...parsedUrl1 } = cors.parseUrlIntoDomainTldPort(url1)
+  const { port: port2, ...parsedUrl2 } = cors.parseUrlIntoDomainTldPort(url2)
+
+  // If HTTPS, ports NEED to match. Otherwise, HTTP ports can be different and are same origin
+  const doPortsPassSameSchemeCheck = port1 !== port2 ? (port1 !== '443' && port2 !== '443') : true
+
+  return doPortsPassSameSchemeCheck && _.isEqual(parsedUrl1, parsedUrl2)
+}
+
 // sameSiteContext is a concept for tough-cookie's cookie jar that helps it
 // simulate what a browser would do when determining whether or not it should
 // be set from a response or a attached to a response. it shouldn't be confused
@@ -21,7 +41,7 @@ export const getSameSiteContext = (autUrl: string | undefined, requestUrl: strin
   // if there's no AUT URL, it's a request for the first URL visited, or if
   // the request origin matches the AUT origin; both indicate that it's not
   // a cross-origin request
-  if (!autUrl || cors.urlOriginsMatch(autUrl, requestUrl)) {
+  if (!autUrl || doesUrlSchemeDomainAndTLDMatch(autUrl, requestUrl)) {
     return 'strict'
   }
 

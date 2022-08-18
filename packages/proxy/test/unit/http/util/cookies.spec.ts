@@ -80,8 +80,7 @@ context('getSameSiteContext', () => {
 
       it('sameSiteContext=none', function () {
         this.isNone(this.autUrl, 'http://localhoss:4200')
-        // is localhost always a secure context?
-        // this.isNone(this.autUrl, 'https://localhost:4200')
+        this.isNone(this.autUrl, 'https://localhost')
       })
 
       it('sameSiteContext=lax', function () {
@@ -91,7 +90,6 @@ context('getSameSiteContext', () => {
       it('sameSiteContext=strict', function () {
         this.isStrict(this.autUrl, 'http://localhost:4200')
         this.isStrict(this.autUrl, 'http://localhost:4201')
-        this.isStrict(this.autUrl, 'http://app.localhost:4201')
       })
     })
 
@@ -102,6 +100,11 @@ context('getSameSiteContext', () => {
 
       it('sameSiteContext=none', function () {
         this.isNone(this.autUrl, 'http://app.localhoss:4200')
+        // app2 is considered a domain and localhost a TLD
+        // not app2 being a subdomain and localhost being a domain. Therefore, this should be "none"
+        this.isNone(this.autUrl, 'http://app2.localhost:4202')
+        // localhost is considered a TLD
+        this.isNone(this.autUrl, 'http://localhost:4201')
       })
 
       it('sameSiteContext=lax', function () {
@@ -110,7 +113,6 @@ context('getSameSiteContext', () => {
 
       it('sameSiteContext=strict', function () {
         this.isStrict(this.autUrl, 'http://app.localhost:4200')
-        this.isStrict(this.autUrl, 'http://app2.localhost:4202')
         this.isStrict(this.autUrl, 'http://name.app.localhost:4200')
         this.isStrict(this.autUrl, 'http://app.localhost:4201')
       })
