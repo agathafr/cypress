@@ -233,7 +233,7 @@ describe('detectFramework', () => {
     expect(actual.bundler?.type).to.eq('vite')
   })
 
-  it(`Svelte and Vite`, async () => {
+  it(`Svelte and Webpack`, async () => {
     const projectPath = await scaffoldMigrationProject('svelte-webpack-unconfigured')
 
     fakeDepsInNodeModules(projectPath, [
